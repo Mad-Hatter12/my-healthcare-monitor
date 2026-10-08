@@ -45,16 +45,16 @@ def main():
     syms = [x["symbol"] for x in STOCKS + INDICES + COMMODITIES]
 
     def hist(sym):
-        for attempt in range(3):
+        for attempt in range(4):
             try:
                 return sym, server.get_history(sym)
-            except Exception as e:
+            except Exception as e:  # e.g. 429 rate limit: back off and retry
                 err = e
-                time.sleep(2)
+                time.sleep(5 * (attempt + 1))
         return sym, err
 
     failed = []
-    with ThreadPoolExecutor(max_workers=6) as ex:
+    with ThreadPoolExecutor(max_workers=3) as ex:
         for sym, res in ex.map(hist, syms):
             if isinstance(res, Exception):
                 failed.append(f"{sym}: {res}")

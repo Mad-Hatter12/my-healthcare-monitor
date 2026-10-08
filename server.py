@@ -250,12 +250,28 @@ _hist = {}
 _hist_locks = {sym: threading.Lock() for sym in ALLOWED}
 
 
+_raw = {}
+_raw_lock = threading.Lock()
+
+
+def _raw_hist(symbol):
+    """TradingView bars, cached so a symbol used in several crosses is fetched once per TTL."""
+    with _raw_lock:
+        lock = _raw.setdefault(("lock", symbol), threading.Lock())
+    with lock:
+        ts, rows = _raw.get(symbol, (0, None))
+        if rows is None or time.time() - ts > HIST_TTL:
+            rows = tvhist.history(symbol, bars=800)
+            _raw[symbol] = (time.time(), rows)
+        return rows
+
+
 def _fetch_hist(symbol):
     sy = SYNTH.get(symbol)
     if not sy:
         return [{"t": r[0], "o": r[1], "h": r[2], "l": r[3], "c": r[4], "v": r[5]}
-                for r in tvhist.history(symbol, bars=800)]
-    num, den = tvhist.history(sy["num"], bars=800), tvhist.history(sy["den"], bars=800)
+                for r in _raw_hist(symbol)]
+    num, den = _raw_hist(sy["num"]), _raw_hist(sy["den"])
     day = lambda t: datetime.fromtimestamp(t, timezone.utc).date()
     dmap = {day(r[0]): r for r in den}
     out = []
