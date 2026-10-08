@@ -18,10 +18,9 @@ STOCKS = [
      "aliases": ["Optimax"]},
     {"symbol": "MYX:DPHARMA", "code": "7148", "short": "DPHARMA", "name": "Duopharma Biotech", "segment": "Pharma",
      "aliases": ["Duopharma"],
-     "fx": ["FX_IDC:PHPMYR", "SYN:BNDMYR", "FX_IDC:SGDMYR"]},
+     "fx": ["FX_IDC:USDMYR", "FX_IDC:PHPMYR", "SYN:BNDMYR", "FX_IDC:SGDMYR"]},
     {"symbol": "MYX:PHARMA", "code": "7081", "short": "PHARMA", "name": "Pharmaniaga", "segment": "Pharma",
-     "aliases": ["Pharmaniaga"],
-     "fx": ["FX_IDC:USDMYR"]},
+     "aliases": ["Pharmaniaga"]},
 ]
 
 # Apex Healthcare (AHEALTH, 7090) was privatised by a Quadria-led consortium and delisted 27 Jan 2026.
