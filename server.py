@@ -26,6 +26,7 @@ from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse
 
 from config import API_QUERIES, COMMODITIES, INDICES, SECTOR_QUERIES, STOCKS, TAGS
+import bursa
 import tvhist
 
 ROOT = Path(__file__).parent
@@ -48,7 +49,7 @@ QUOTE_KEYS = ["description", "close", "chg", "chg_abs", "w1", "m1", "m3", "m6", 
               "hi52", "lo52", "mcap", "pe", "dy", "volume", "rvol", "next_earnings", "currency",
               "update_mode", "shares"]
 
-_cache = {"quotes": (0, None), "news": (0, None)}
+_cache = {"quotes": (0, None), "news": (0, None), "bursa": (0, None)}
 _lock = threading.Lock()
 _news_refreshing = threading.Event()
 
@@ -243,6 +244,29 @@ def get_news():
     return _cache["news"]
 
 
+# ---------------------------------------------------------------- bursa announcements
+BURSA_TTL = 30 * 60
+_bursa_refreshing = threading.Event()
+
+
+def _refresh_bursa():
+    try:
+        _cache["bursa"] = (time.time(), bursa.fetch_all(STOCKS, max_details=40))
+    except Exception as e:
+        print("bursa refresh failed:", e)
+    finally:
+        _bursa_refreshing.clear()
+
+
+def get_bursa():
+    """Serve cached announcements; refresh in the background (fetching is slow: 5 s crawl delay)."""
+    ts, data = _cache["bursa"]
+    if (data is None or time.time() - ts > BURSA_TTL) and not _bursa_refreshing.is_set():
+        _bursa_refreshing.set()
+        threading.Thread(target=_refresh_bursa, daemon=True).start()
+    return _cache["bursa"]
+
+
 # ---------------------------------------------------------------- history
 HIST_TTL = 30 * 60
 ALLOWED = {x["symbol"] for x in STOCKS + INDICES + COMMODITIES}
@@ -322,6 +346,12 @@ def api_news():
     return {"updated": ts, **(data or {"items": [], "errors": []})}
 
 
+@app.get("/api/bursa")
+def api_bursa():
+    ts, data = get_bursa()
+    return {"updated": ts, **(data or {"items": [], "errors": [], "pending_details": 0})}
+
+
 @app.get("/api/history")
 def api_history(symbol: str = Query(...)):
     if symbol not in ALLOWED:
@@ -339,5 +369,6 @@ def index():
 
 if __name__ == "__main__":
     threading.Thread(target=get_news, daemon=True).start()  # warm the news cache
+    get_bursa()                                              # starts a background fetch
     print(f"Dashboard: http://localhost:{PORT}")
     uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")

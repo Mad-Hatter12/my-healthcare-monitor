@@ -4,3 +4,4 @@ site/
 .claude/
 *.jpg
 .DS_Store
+cache/

@@ -149,6 +149,9 @@ input.search{border:1px solid var(--border);background:var(--surface);color:var(
 .custom-range .sub{color:var(--muted);flex-basis:100%}
 .legend{display:flex;gap:14px;font-size:12px;color:var(--text-2);align-items:center}
 .legend i{display:inline-block;width:14px;height:0;border-top:2px dashed var(--ref);vertical-align:middle;margin-right:5px}
+.dir{display:inline-flex;align-items:center;gap:4px;font-weight:600}
+.cat-Others{background:rgba(42,120,214,.14);color:var(--accent)}
+td.wrap{white-space:normal;text-align:left;min-width:180px}
 .empty{padding:28px 16px;color:var(--muted);text-align:center}
 .note-small{color:var(--muted);font-size:11.5px;padding:10px 16px;border-top:1px solid var(--border)}
 .err{background:rgba(var(--down-bg),.1);color:var(--down);padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none}
@@ -178,6 +181,22 @@ input.search{border:1px solid var(--border);background:var(--surface);color:var(
   .custom-range{padding:10px 12px}
   .flabel{width:100%}
   input.search{min-width:0;width:100%;margin-left:0!important}
+  /* shareholding table becomes one compact card per filing */
+  #sh-tbl thead{display:none}
+  #sh-tbl tbody tr{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"co filed link" "holder holder holder" "chg shares stake";
+    gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--border)}
+  #sh-tbl td{border:0;padding:0;white-space:normal;min-width:0;text-align:left}
+  #sh-tbl td:nth-child(1){grid-area:filed;color:var(--muted);font-size:12px;align-self:center}
+  #sh-tbl td:nth-child(2){grid-area:co}
+  #sh-tbl td:nth-child(3){grid-area:holder}
+  #sh-tbl td:nth-child(4){grid-area:chg}
+  #sh-tbl td:nth-child(5){grid-area:shares;text-align:right}
+  #sh-tbl td:nth-child(5)::after{content:" shares";color:var(--muted);font-size:11.5px}
+  #sh-tbl td:nth-child(6){grid-area:stake;text-align:right}
+  #sh-tbl td:nth-child(6)::before{content:"stake ";color:var(--muted);font-size:11.5px}
+  #sh-tbl td:nth-child(7){display:none}
+  #sh-tbl td:nth-child(8){grid-area:link;text-align:right}
+  #sh-tbl td.empty{grid-column:1/-1}
 }
 </style>
 </head>
@@ -189,6 +208,7 @@ input.search{border:1px solid var(--border);background:var(--surface);color:var(
       <a href="#overview" data-view="overview">Overview</a>
       <a href="#company" data-view="company">Companies</a>
       <a href="#news" data-view="news">News</a>
+      <a href="#bursa" data-view="bursa">Bursa</a>
       <a href="#commodities" data-view="commodities">Commodities &amp; FX</a>
     </nav>
     <div class="status">
@@ -287,6 +307,32 @@ input.search{border:1px solid var(--border);background:var(--surface);color:var(
     </div>
   </section>
 
+  <!-- BURSA -->
+  <section class="view" id="v-bursa">
+    <div class="card">
+      <div class="hd" style="flex-direction:column;align-items:stretch;gap:10px">
+        <div class="filters"><span class="flabel">Company</span><div class="filters" id="b-co"></div></div>
+        <div class="filters"><span class="flabel">Period</span><div class="filters" id="b-age"></div>
+          <input class="search" id="b-q" placeholder="Search filings…" style="margin-left:auto"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="hd"><h2>Shareholding changes</h2><span class="sub" id="sh-sub">Substantial shareholders &amp; directors · from Bursa filings</span></div>
+      <div class="tblwrap"><table id="sh-tbl"></table></div>
+      <div class="note-small" id="sh-note"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="hd" style="flex-direction:column;align-items:stretch;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>Announcements</h2><span class="sub">Key filings; shareholding notices are in the table above</span></div>
+        <div class="filters" id="b-cat"></div>
+      </div>
+      <ul class="news" id="b-list"></ul>
+      <div class="note-small">Source: Bursa Malaysia filings as mirrored by i3investor (Bursa's own site blocks automated access); links open i3investor's copy. Headlines are i3investor's summaries. Categories are assigned from the headline by this dashboard and are not Bursa's own labels, so "Others" holds everything that doesn't fit a category above. Shareholding figures are read from each filing automatically: check the filing before relying on them.</div>
+    </div>
+  </section>
+
   <!-- COMMODITIES -->
   <section class="view" id="v-commodities">
     <div class="card">
@@ -313,9 +359,10 @@ input.search{border:1px solid var(--border);background:var(--surface);color:var(
 const STATIC = !!window.MHM_STATIC, bust = () => 't=' + Math.floor(Date.now() / 60000);
 const API = STATIC ? {
   config: () => 'data/config.json?' + bust(), quotes: () => 'data/quotes.json?' + bust(), news: () => 'data/news.json?' + bust(),
+  bursa: () => 'data/bursa.json?' + bust(),
   hist: s => 'data/history/' + s.replace(/[^A-Za-z0-9]/g, '_') + '.json?' + bust(),
 } : {
-  config: () => '/api/config', quotes: () => '/api/quotes', news: () => '/api/news',
+  config: () => '/api/config', quotes: () => '/api/quotes', news: () => '/api/news', bursa: () => '/api/bursa',
   hist: s => '/api/history?symbol=' + encodeURIComponent(s),
 };
 const S = {cfg:null, quotes:{}, qUpdated:0, news:[], nUpdated:0, period:'ytd', sort:{key:'mcap',dir:-1},
@@ -718,6 +765,63 @@ function niceTicks(lo, hi, n){
   return out.filter(t => t !== 0);
 }
 
+// ---------- Bursa announcements & shareholding changes
+S.bursa = {items: [], updated: 0, pending: 0, loaded: false};
+S.bf = {co: 'all', cat: 'key', age: 90, q: ''};
+const BCATS = ['Others', 'Corporate proposal', 'Results', 'Dividend / entitlement', 'Board / management', 'Meetings', 'Shareholding'];
+async function loadBursa(){
+  try{
+    const j = await (await fetch(API.bursa())).json();
+    S.bursa = {items: j.items || [], updated: j.updated, pending: j.pending_details || 0, loaded: !!j.updated};
+  }catch(e){ console.warn(e); }
+  renderBursa();
+  if (!S.bursa.loaded && !STATIC) setTimeout(loadBursa, 8000);   // first fetch runs in the background
+}
+const fmtInt = n => n == null ? '–' : n.toLocaleString('en-MY');
+function bursaFiltered(){
+  const {co, age, q} = S.bf, qq = q.trim().toLowerCase();
+  const cutoff = new Date(Date.now() - age*86400000).toISOString().slice(0,10);
+  return S.bursa.items.filter(a => (co === 'all' || a.symbol === co) && a.date >= cutoff &&
+    (!qq || a.title.toLowerCase().includes(qq) || ((a.detail||{}).holder||'').toLowerCase().includes(qq)));
+}
+function renderBursa(){
+  if (!S.cfg) return;
+  const btn = (grp, v, l) => `<button class="fbtn ${String(S.bf[grp])===String(v)?'on':''}" data-bgrp="${grp}" data-v="${esc(v)}">${esc(l)}</button>`;
+  $('#b-co').innerHTML = btn('co','all','All') + S.cfg.stocks.map(s => btn('co', s.symbol, s.short)).join('');
+  $('#b-age').innerHTML = [[30,'30 days'],[90,'90 days'],[180,'6 months'],[365,'1 year']].map(([v,l]) => btn('age', v, l)).join('');
+  const base = bursaFiltered();
+  const counts = Object.fromEntries(BCATS.map(c => [c, base.filter(a => a.category === c).length]));
+  $('#b-cat').innerHTML = btn('cat','key',`Key news (${base.length - counts['Shareholding']})`) +
+    BCATS.filter(c => c !== 'Shareholding').map(c => btn('cat', c, `${c} (${counts[c]})`)).join('');
+
+  // shareholding table
+  const sh = base.filter(a => a.category === 'Shareholding');
+  const head = '<thead><tr>' + ['Filed','Company','Holder','Change','Shares','Stake after','Date of change',''].map((h,i) => `<th class="nosort" ${i<=2?'style="text-align:left"':''}>${h}</th>`).join('') + '</tr></thead>';
+  const rows = sh.slice(0, 200).map(a => {
+    const d = a.detail || {}, t = d.type;
+    const dir = t === 'Acquired' ? '<span class="dir up">▲ Acquired</span>' : t === 'Disposed' ? '<span class="dir down">▼ Disposed</span>' : t ? `<span class="dir flat">↔ ${esc(t)}</span>` : '<span class="flat">–</span>';
+    return `<tr><td style="text-align:left" class="num">${fmtD(a.date)}</td><td style="text-align:left"><span class="chip sym">${esc(shortOf(a.symbol))}</span></td>
+      <td class="wrap">${esc(d.holder || '–')}<div style="color:var(--muted);font-size:11.5px">${esc(a.title)}</div></td>
+      <td>${a.detail ? dir : '<span class="flat">pending</span>'}</td><td class="num">${fmtInt(d.shares)}</td>
+      <td class="num">${d.pct_after == null ? '–' : d.pct_after.toFixed(2) + '%'}</td><td class="num">${d.date ? fmtD(d.date) : '–'}</td>
+      <td><a href="${esc(a.url)}" target="_blank" rel="noopener" class="sub" style="color:var(--accent)">filing ↗</a></td></tr>`;
+  }).join('');
+  $('#sh-tbl').innerHTML = head + '<tbody>' + (rows || `<tr><td colspan="8" class="empty">${S.bursa.loaded ? 'No shareholding filings in this period.' : 'Loading Bursa filings… (first load takes about a minute)'}</td></tr>`) + '</tbody>';
+  $('#sh-note').textContent = `${sh.length} filing${sh.length===1?'':'s'}` + (S.bursa.pending ? ` · details for ${S.bursa.pending} older filings are still being collected` : '') +
+    (S.bursa.updated ? ` · updated ${ago(S.bursa.updated)}` : '');
+
+  // announcements list
+  const cat = S.bf.cat;
+  const list = base.filter(a => cat === 'key' ? a.category !== 'Shareholding' : a.category === cat);
+  let html = '', last = '';
+  list.slice(0, 300).forEach(a => {
+    if (a.date !== last){ html += `<li class="dategrp">${new Date(a.date + 'T00:00:00Z').toLocaleDateString('en-MY',{weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone:'UTC'})}</li>`; last = a.date; }
+    html += `<li><a class="t" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a>
+      <div class="m"><span class="chip sym">${esc(shortOf(a.symbol))}</span><span class="chip cat-${a.category === 'Others' ? 'Others' : 'x'}">${esc(a.category)}</span></div></li>`;
+  });
+  $('#b-list').innerHTML = html || `<li class="empty">${S.bursa.loaded ? 'No announcements match these filters.' : 'Loading Bursa filings…'}</li>`;
+}
+
 // ---------- news rendering
 function newsItem(n, opts={}){
   const syms = n.symbols.map(s => `<span class="chip sym">${esc(shortOf(s))}</span>`).join('');
@@ -876,6 +980,8 @@ document.addEventListener('click', e => {
   if (p){ S.period = p.dataset.p; renderPeriodSeg(); renderRetChart(); return; }
   const pr = e.target.closest('#cr-presets button');
   if (pr){ S.cr = {from: pr.dataset.from, to: isoToday()}; saveRange(); renderRetChart(); return; }
+  const bf = e.target.closest('.fbtn[data-bgrp]');
+  if (bf){ const g = bf.dataset.bgrp; S.bf[g] = g === 'age' ? +bf.dataset.v : bf.dataset.v; renderBursa(); return; }
   const f = e.target.closest('.fbtn');
   if (f){ S.nf[f.dataset.grp] = f.dataset.v; renderNewsTab(); return; }
   const cr = e.target.closest('tr[data-cmd]');
@@ -886,8 +992,9 @@ document.addEventListener('click', e => {
   const f = $('#cr-from').value, t = $('#cr-to').value;
   if (f && t){ S.cr = {from: f, to: t}; saveRange(); renderRetChart(); }
 }));
+$('#b-q').addEventListener('input', e => { S.bf.q = e.target.value; renderBursa(); });
 $('#f-q').addEventListener('input', e => { S.nf.q = e.target.value; renderNewsTab(); });
-$('#refresh').addEventListener('click', () => { Object.keys(histCache).forEach(k => delete histCache[k]); loadQuotes(); loadNews(); });
+$('#refresh').addEventListener('click', () => { Object.keys(histCache).forEach(k => delete histCache[k]); loadQuotes(); loadNews(); loadBursa(); });
 const tip = $('#tip');
 document.addEventListener('mousemove', e => {
   const g = e.target.closest('.hit[data-tip]');
@@ -907,6 +1014,8 @@ addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTim
   await loadQuotes();
   route();
   loadNews();
+  loadBursa();
+  setInterval(loadBursa, 10 * 60_000);
   setInterval(loadQuotes, 60_000);
   setInterval(loadNews, 10 * 60_000);
   setInterval(renderStatus, 30_000);

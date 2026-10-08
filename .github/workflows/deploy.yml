@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,6 +30,12 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt
+      # Shareholding details never change once filed; keep them between runs so each is fetched once.
+      - uses: actions/cache@v4
+        with:
+          path: cache
+          key: bursa-details-${{ github.run_id }}
+          restore-keys: bursa-details-
       - run: python build_static.py
       - uses: actions/upload-pages-artifact@v3
         with:

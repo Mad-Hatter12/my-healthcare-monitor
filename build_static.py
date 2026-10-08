@@ -12,6 +12,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import bursa
 import server
 from config import COMMODITIES, INDICES, STOCKS
 
@@ -41,6 +42,13 @@ def main():
     news = server.fetch_news()
     write(data / "news.json", {"updated": now, **news})
     print(f"news: {len(news['items'])} items, {len(news['errors'])} errors")
+
+    try:
+        b = bursa.fetch_all(STOCKS, max_details=60)
+        write(data / "bursa.json", {"updated": now, **b})
+    except Exception as e:  # announcements are optional: keep building without them
+        print("bursa failed:", e)
+        write(data / "bursa.json", {"updated": 0, "items": [], "errors": [str(e)], "pending_details": 0})
 
     syms = [x["symbol"] for x in STOCKS + INDICES + COMMODITIES]
 
