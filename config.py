@@ -21,6 +21,9 @@ STOCKS = [
      "fx": ["FX_IDC:USDMYR", "FX_IDC:PHPMYR", "SYN:BNDMYR", "FX_IDC:SGDMYR"]},
     {"symbol": "MYX:PHARMA", "code": "7081", "short": "PHARMA", "name": "Pharmaniaga", "segment": "Pharma",
      "aliases": ["Pharmaniaga"]},
+    # Watchlist (non-healthcare): benchmarked against the KLCI instead of the Bursa Health Care index.
+    {"symbol": "MYX:FOODIE", "code": "0382", "short": "FOODIE", "name": "Foodie Media", "segment": "Media (watchlist)",
+     "benchmark": "FTSEMYX:FBMKLCI", "aliases": ["Foodie Media"]},
 ]
 
 # Apex Healthcare (AHEALTH, 7090) was privatised by a Quadria-led consortium and delisted 27 Jan 2026.

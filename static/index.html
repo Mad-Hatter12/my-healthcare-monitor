@@ -461,7 +461,8 @@ function renderRegional(){
 S.coRange = 365; S.coMode = 'price';
 async function renderCoChart(){
   $('#co-range').innerHTML = segHTML(RANGES.map(([l,v]) => [l,v]), S.coRange);
-  $('#co-mode').innerHTML = segHTML([['Price','price'],['vs Bursa HC','rel']], S.coMode);
+  const stk = S.cfg.stocks.find(x => x.symbol === S.co), bsym = benchOf(stk);
+  $('#co-mode').innerHTML = segHTML([['Price','price'],['vs ' + benchName(bsym),'rel']], S.coMode);
   const sym = S.co, el = $('#lc-company'), lg = $('#co-legend'), start = rangeStart(S.coRange);
   const c = SERIES();
   // news by day for markers + hover
@@ -481,7 +482,7 @@ async function renderCoChart(){
   if (S.coMode === 'rel'){
     const ch = await rebasedChart(el, lg, [
       {sym, name: shortOf(sym), color: c[0]},
-      {sym:'MYX:HEALTH', name:'Bursa Health Care index', color: css('--ref'), dash:true},
+      {sym: bsym, name: bsym === 'MYX:HEALTH' ? 'Bursa Health Care index' : benchName(bsym), color: css('--ref'), dash:true},
     ], S.coRange);
     if (ch) ch.subscribeCrosshairMove(p => showDay(p && p.time ? p.time : null));
     return;
@@ -578,11 +579,13 @@ const COLS = [
   {k:'alpha', l:'YTD vs index'}, {k:'rng', l:'52-wk range', nosort:true},
   {k:'mcap', l:'Mkt cap'}, {k:'pe', l:'P/E'}, {k:'dy', l:'Div yld'}, {k:'rvol', l:'Rel vol'}, {k:'next_earnings', l:'Next results'},
 ];
+// Each stock is compared with its own benchmark: Bursa Health Care by default, KLCI for non-healthcare watchlist names.
+const benchOf = s => (s && s.benchmark) || 'MYX:HEALTH';
+const benchName = sym => sym === 'MYX:HEALTH' ? 'Bursa HC' : ((S.cfg.indices.find(i => i.symbol === sym) || {}).short || sym);
 function stockRows(){
-  const hc = (S.quotes['MYX:HEALTH'] || {}).ytd;
   return S.cfg.stocks.map(s => {
-    const q = S.quotes[s.symbol] || {};
-    return {...q, ...s, alpha: q.ytd != null && hc != null ? q.ytd - hc : null};
+    const q = S.quotes[s.symbol] || {}, b = (S.quotes[benchOf(s)] || {}).ytd;
+    return {...q, ...s, alpha: q.ytd != null && b != null ? q.ytd - b : null};
   });
 }
 function renderPerf(){
@@ -604,7 +607,7 @@ function renderPerf(){
       <td><div class="co"><b>${esc(r.name)}</b><span>${esc(r.short)} · ${esc(r.segment)}</span></div></td>
       <td class="num">${fmtPx(r.close)}</td>
       ${PERIODS.map(([k]) => `<td class="num">${retCell(r[k], PERIOD_SCALE[k])}</td>`).join('')}
-      <td class="num ${cls(r.alpha)}">${r.alpha == null ? '–' : (r.alpha>0?'+':r.alpha<0?'−':'') + Math.abs(r.alpha).toFixed(1) + ' pts'}</td>
+      <td class="num ${cls(r.alpha)}" title="YTD vs ${esc(benchName(benchOf(r)))}">${r.alpha == null ? '–' : (r.alpha>0?'+':r.alpha<0?'−':'') + Math.abs(r.alpha).toFixed(1) + ' pts'}${benchOf(r) !== 'MYX:HEALTH' ? `<div style="font-size:10.5px;color:var(--muted)">vs ${esc(benchName(benchOf(r)))}</div>` : ''}</td>
       <td>${rng(r)}</td>
       <td class="num">${fmtCap(r.mcap)}</td>
       <td class="num">${r.pe == null ? '–' : r.pe.toFixed(1) + '×'}</td>
@@ -649,7 +652,7 @@ function periodReturn(bars, from, to){
   return {v: (end.c / bars[i].c - 1) * 100, d0: days[i], d1: days[j]};
 }
 async function customRows(){
-  const syms = S.cfg.stocks.map(s => s.symbol).concat('MYX:HEALTH');
+  const syms = [...new Set(S.cfg.stocks.map(s => s.symbol).concat('MYX:HEALTH', ...S.cfg.stocks.map(benchOf)))];
   const hist = await Promise.all(syms.map(getHist));
   const res = Object.fromEntries(syms.map((s, i) => [s, periodReturn(hist[i], S.cr.from, S.cr.to)]));
   const earliest = Math.min(...hist.map(h => h[0].t));
@@ -658,7 +661,7 @@ async function customRows(){
 
 async function renderRetChart(){
   const el = $('#ret-chart'), tok = el._tok = (el._tok || 0) + 1;
-  let k = S.period, label, rows, ref, notes = {};
+  let k = S.period, label, rows, ref, notes = {}, bval = () => null;
   if (k === 'custom'){
     renderCustomInputs();
     if (S.cr.from >= S.cr.to){ $('#cr-note').textContent = 'From date must be before To date.'; el.innerHTML = ''; return; }
@@ -676,10 +679,12 @@ async function renderRetChart(){
     rows = stockRows().map(r => ({...r, cv: cr.res[r.symbol].v})).filter(r => r.cv != null).sort((a,b) => b.cv - a.cv);
     S.cfg.stocks.forEach(s => { if (cr.res[s.symbol].since) notes[s.symbol] = '*'; });
     ref = r0 ? r0.v : null;
+    bval = r => (cr.res[benchOf(r)] || {}).v;
   } else {
     label = PERIODS.find(p => p[0]===k)[1];
     rows = stockRows().filter(r => r[k] != null).sort((a,b) => b[k]-a[k]);
     ref = (S.quotes['MYX:HEALTH'] || {})[k];
+    bval = r => (S.quotes[benchOf(r)] || {})[k];
   }
   if (!rows.length){ el.innerHTML = '<div class="empty">No data for this range</div>'; return; }
   const W = Math.max(320, el.clientWidth - 32), rowH = 30, padL = 130, padR = 60, H = rows.length*rowH + 26;
@@ -696,7 +701,7 @@ async function renderRetChart(){
     const y = i*rowH + 6, h = rowH - 12, v = r[k], x0 = x(0), x1 = x(v);
     const bx = Math.min(x0,x1), bw = Math.max(2, Math.abs(x1-x0));
     const col = v >= 0 ? 'var(--bar-up)' : 'var(--bar-down)';
-    svg += `<g class="hit" data-sym="${r.symbol}" data-tip="${esc(r.name)}${notes[r.symbol] ? ' (since listing)' : ''}|${label}: ${fmtPct(v)}${ref!=null?`|vs index: ${(v-ref>0?'+':'')}${(v-ref).toFixed(1)} pts`:''}">
+    svg += `<g class="hit" data-sym="${r.symbol}" data-tip="${esc(r.name)}${notes[r.symbol] ? ' (since listing)' : ''}|${label}: ${fmtPct(v)}${bval(r)!=null?`|vs ${esc(benchName(benchOf(r)))}: ${(v-bval(r)>0?'+':'')}${(v-bval(r)).toFixed(1)} pts`:''}">
       <rect x="0" y="${y-6}" width="${W}" height="${rowH}" fill="transparent"/>
       <text class="lab" x="${padL-10}" y="${y+h/2+4}" text-anchor="end">${esc(r.short)}${notes[r.symbol] || ''}</text>
       <rect x="${bx}" y="${y}" width="${bw}" height="${h}" rx="4" fill="${col}"/>
@@ -765,13 +770,13 @@ function renderCoPills(){
 }
 function renderCoHead(){
   const s = S.cfg.stocks.find(x => x.symbol === S.co); const q = S.quotes[S.co] || {};
-  const ix = S.quotes['MYX:HEALTH'] || {};
+  const ix = S.quotes[benchOf(s)] || {}, bn = benchName(benchOf(s));
   $('#cohead').innerHTML = `<h1>${esc(s.name)}</h1><span class="flat">${esc(s.symbol)} · ${esc(s.segment)}</span>
     <span class="px num">RM ${fmtPx(q.close)}</span><span class="num ${cls(q.chg)}" style="font-weight:500">${arrow(q.chg)}${fmtPct(q.chg)} today</span>
     ${s.code ? `<a class="extlink" href="https://www.klsescreener.com/v2/stocks/view/${esc(s.code)}" target="_blank" rel="noopener">Open in KLSE Screener ↗</a>` : ''}`;
   const st = [
     ['1 week', fmtPct(q.w1), cls(q.w1)], ['1 month', fmtPct(q.m1), cls(q.m1)], ['YTD', fmtPct(q.ytd), cls(q.ytd)],
-    ['YTD vs Bursa HC', q.ytd!=null&&ix.ytd!=null ? ((q.ytd-ix.ytd>0?'+':'') + (q.ytd-ix.ytd).toFixed(1)+' pts') : '–', cls(q.ytd-ix.ytd)],
+    ['YTD vs ' + bn, q.ytd!=null&&ix.ytd!=null ? ((q.ytd-ix.ytd>0?'+':'') + (q.ytd-ix.ytd).toFixed(1)+' pts') : '–', cls(q.ytd-ix.ytd)],
     ['52-wk range', `${fmtPx(q.lo52)} – ${fmtPx(q.hi52)}`, ''], ['Market cap', fmtCap(q.mcap), ''],
     ['P/E (ttm) · Div yield', `${q.pe==null?'–':q.pe.toFixed(1)+'×'} · ${q.dy==null?'–':q.dy.toFixed(1)+'%'}`, ''],
     ['Next results (est.)', q.next_earnings ? new Date(q.next_earnings*1000).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'}) : '–', ''],
