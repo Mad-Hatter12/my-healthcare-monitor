@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+site/
+.claude/
+*.jpg
+.DS_Store
