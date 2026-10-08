@@ -122,6 +122,9 @@ input.search{border:1px solid var(--border);background:var(--surface);color:var(
 .cohead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 .cohead h1{margin:0;font-size:22px;letter-spacing:-.02em}
 .cohead .px{font-size:22px;font-weight:600}
+.extlink{margin-left:auto;align-self:center;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12.5px;font-weight:500;color:var(--accent);white-space:nowrap}
+.extlink:hover{background:var(--surface-2)}
+.srcnote{color:var(--muted);font-size:11.5px;margin-top:10px}
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
 .ccard .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:12px 14px 4px}
 .ccard .nm{font-weight:600}
@@ -248,6 +251,7 @@ input.search{border:1px solid var(--border);background:var(--surface);color:var(
       <div class="bd">
         <div class="cohead" id="cohead"></div>
         <div class="stats" id="costats" style="margin-top:14px"></div>
+        <div class="srcnote">Price, market cap, P/E (price ÷ trailing-12-month EPS) and dividend yield are from TradingView. Other sites may calculate these differently, e.g. using a different set of quarters for EPS, so check KLSE Screener for its figures.</div>
       </div>
     </div>
     <div class="card" id="cofx-card" style="margin-top:16px" hidden>
@@ -763,7 +767,8 @@ function renderCoHead(){
   const s = S.cfg.stocks.find(x => x.symbol === S.co); const q = S.quotes[S.co] || {};
   const ix = S.quotes['MYX:HEALTH'] || {};
   $('#cohead').innerHTML = `<h1>${esc(s.name)}</h1><span class="flat">${esc(s.symbol)} · ${esc(s.segment)}</span>
-    <span class="px num">RM ${fmtPx(q.close)}</span><span class="num ${cls(q.chg)}" style="font-weight:500">${arrow(q.chg)}${fmtPct(q.chg)} today</span>`;
+    <span class="px num">RM ${fmtPx(q.close)}</span><span class="num ${cls(q.chg)}" style="font-weight:500">${arrow(q.chg)}${fmtPct(q.chg)} today</span>
+    ${s.code ? `<a class="extlink" href="https://www.klsescreener.com/v2/stocks/view/${esc(s.code)}" target="_blank" rel="noopener">Open in KLSE Screener ↗</a>` : ''}`;
   const st = [
     ['1 week', fmtPct(q.w1), cls(q.w1)], ['1 month', fmtPct(q.m1), cls(q.m1)], ['YTD', fmtPct(q.ytd), cls(q.ytd)],
     ['YTD vs Bursa HC', q.ytd!=null&&ix.ytd!=null ? ((q.ytd-ix.ytd>0?'+':'') + (q.ytd-ix.ytd).toFixed(1)+' pts') : '–', cls(q.ytd-ix.ytd)],

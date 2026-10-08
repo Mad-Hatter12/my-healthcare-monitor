@@ -4,21 +4,21 @@ Symbols are TradingView "EXCHANGE:TICKER" ids. Edit this file to add/remove name
 """
 
 STOCKS = [
-    # symbol, short, name, segment, news aliases (case-insensitive match in headlines)
-    {"symbol": "MYX:IHH", "short": "IHH", "name": "IHH Healthcare", "segment": "Hospitals",
+    # symbol, Bursa stock code, short, name, segment, news aliases (case-insensitive match in headlines)
+    {"symbol": "MYX:IHH", "code": "5225", "short": "IHH", "name": "IHH Healthcare", "segment": "Hospitals",
      "aliases": ["IHH", "Pantai", "Gleneagles", "Prince Court", "Acibadem", "Parkway"],
      "fx": ["FX_IDC:SGDMYR", "SYN:TRYMYR", "FX_IDC:INRMYR"]},
-    {"symbol": "MYX:KPJ", "short": "KPJ", "name": "KPJ Healthcare", "segment": "Hospitals",
+    {"symbol": "MYX:KPJ", "code": "5878", "short": "KPJ", "name": "KPJ Healthcare", "segment": "Hospitals",
      "aliases": ["KPJ", "KJP Healthcare"]},
-    {"symbol": "MYX:SUNMED", "short": "SUNMED", "name": "Sunway Healthcare", "segment": "Hospitals",
+    {"symbol": "MYX:SUNMED", "code": "5555", "short": "SUNMED", "name": "Sunway Healthcare", "segment": "Hospitals",
      "aliases": ["Sunway Healthcare", "SunMed", "Sunway Medical"]},
-    {"symbol": "MYX:PMCK", "short": "PMCK", "name": "PMCK Berhad", "segment": "Hospitals",
+    {"symbol": "MYX:PMCK", "code": "0363", "short": "PMCK", "name": "PMCK Berhad", "segment": "Hospitals",
      "aliases": ["PMCK", "Putra Medical"]},
-    {"symbol": "MYX:OPTIMAX", "short": "OPTIMAX", "name": "Optimax Holdings", "segment": "Specialist clinics",
+    {"symbol": "MYX:OPTIMAX", "code": "0222", "short": "OPTIMAX", "name": "Optimax Holdings", "segment": "Specialist clinics",
      "aliases": ["Optimax"]},
-    {"symbol": "MYX:DPHARMA", "short": "DPHARMA", "name": "Duopharma Biotech", "segment": "Pharma",
+    {"symbol": "MYX:DPHARMA", "code": "7148", "short": "DPHARMA", "name": "Duopharma Biotech", "segment": "Pharma",
      "aliases": ["Duopharma"]},
-    {"symbol": "MYX:PHARMA", "short": "PHARMA", "name": "Pharmaniaga", "segment": "Pharma",
+    {"symbol": "MYX:PHARMA", "code": "7081", "short": "PHARMA", "name": "Pharmaniaga", "segment": "Pharma",
      "aliases": ["Pharmaniaga"],
      "fx": ["FX_IDC:USDMYR", "FX_IDC:PHPMYR", "SYN:BNDMYR", "FX_IDC:SGDMYR"]},
 ]
