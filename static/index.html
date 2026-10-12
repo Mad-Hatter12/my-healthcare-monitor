@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="MY Healthcare">
+<meta name="apple-mobile-web-app-title" content="__SITE_SHORT__">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<title>MY Healthcare Monitor</title>
+<title>__SITE_TITLE__</title>
 <style>
 :root{
   --bg:#f4f4f1; --surface:#fcfcfb; --surface-2:#f0efec; --border:#e2e1dc;
@@ -212,7 +212,7 @@ td.wrap{white-space:normal;text-align:left;min-width:180px}
 <body>
 <header>
   <div class="bar">
-    <div class="brand"><span class="dot"></span>Malaysia Healthcare Monitor</div>
+    <div class="brand"><span class="dot"></span>__SITE_TITLE__</div>
     <nav>
       <a href="#overview" data-view="overview">Overview</a>
       <a href="#company" data-view="company">Companies</a>
@@ -237,7 +237,7 @@ td.wrap{white-space:normal;text-align:left;min-width:180px}
 
     <div class="card" style="margin-top:16px">
       <div class="hd">
-        <h2>Performance</h2><span class="sub">Bursa-listed hospitals, clinics &amp; pharma · MYR · click a row for detail</span>
+        <h2>Performance</h2><span class="sub"><span id="universe-label"></span> · MYR · click a row for detail</span>
       </div>
       <div class="tblwrap"><table id="perf"></table></div>
       <div class="note-small">Return cells are tinted by size of move. 52-wk bar marks the last price inside the 52-week low–high range. Prices delayed ~15 min (TradingView).</div>
@@ -247,7 +247,7 @@ td.wrap{white-space:normal;text-align:left;min-width:180px}
       <div class="card">
         <div class="hd">
           <h2>Return by period</h2>
-          <div class="legend"><span><i></i>Bursa Health Care index <b class="num" id="ref-val"></b></span></div>
+          <div class="legend"><span><i></i><span id="ref-name"></span> <b class="num" id="ref-val"></b></span></div>
           <div class="right"><div class="seg" id="period-seg"></div></div>
         </div>
         <div class="custom-range" id="custom-range" hidden>
@@ -266,7 +266,7 @@ td.wrap{white-space:normal;text-align:left;min-width:180px}
     </div>
 
     <div class="card" style="margin-top:16px">
-      <div class="hd"><h2>Regional healthcare indices</h2><span class="sub">% change, rebased to start of period</span>
+      <div class="hd"><h2 id="reg-title"></h2><span class="sub">% change, rebased to start of period</span>
         <div class="right"><div class="seg" id="reg-range"></div></div></div>
       <div class="lc-legend" id="reg-legend"></div>
       <div class="lc" id="lc-regional"></div>
@@ -350,7 +350,7 @@ td.wrap{white-space:normal;text-align:left;min-width:180px}
     </div>
     <div id="cmd-cards" style="margin-top:20px"></div>
     <div class="card" style="margin-top:16px">
-      <div class="hd"><h2>API &amp; supply-chain news</h2><span class="sub">Global headlines on APIs, raw materials and drug shortages</span></div>
+      <div class="hd"><h2 id="sup-title"></h2><span class="sub" id="sup-sub"></span></div>
       <ul class="news" id="api-news"></ul>
     </div>
   </section>
@@ -506,10 +506,8 @@ function renderRegional(){
   $('#reg-range').innerHTML = segHTML(RANGES.map(([l,v]) => [l,v]), S.regRange);
   const c = SERIES();
   rebasedChart($('#lc-regional'), $('#reg-legend'), [
-    {sym:'MYX:HEALTH', name:'Bursa Health Care (MY)', color:c[0]},
-    {sym:'SET:HELTH', name:'SET Health Care (TH)', color:c[1]},
-    {sym:'IDX:IDXHEALTH', name:'IDX Healthcare (ID)', color:c[2]},
-    {sym:'FTSEMYX:FBMKLCI', name:'FBM KLCI (market)', color:css('--ref'), dash:true},
+    ...SITE().regional.map((r, i) => ({sym: r.symbol, name: r.name, color: c[i % c.length]})),
+    {sym: SITE().market_index, name: SITE().market_index_name, color: css('--ref'), dash: true},
   ], S.regRange);
 }
 
@@ -538,7 +536,7 @@ async function renderCoChart(){
   if (S.coMode === 'rel'){
     const ch = await rebasedChart(el, lg, [
       {sym, name: shortOf(sym), color: c[0]},
-      {sym: bsym, name: bsym === 'MYX:HEALTH' ? 'Bursa Health Care index' : benchName(bsym), color: css('--ref'), dash:true},
+      {sym: bsym, name: bsym === SITE().sector_index ? SITE().sector_index_name : benchName(bsym), color: css('--ref'), dash:true},
     ], S.coRange);
     if (ch) ch.subscribeCrosshairMove(p => showDay(p && p.time ? p.time : null));
     return;
@@ -635,9 +633,10 @@ const COLS = [
   {k:'alpha', l:'YTD vs index'}, {k:'rng', l:'52-wk range', nosort:true},
   {k:'mcap', l:'Mkt cap'}, {k:'pe', l:'P/E'}, {k:'dy', l:'Div yld'}, {k:'rvol', l:'Rel vol'}, {k:'next_earnings', l:'Next results'},
 ];
-// Each stock is compared with its own benchmark: Bursa Health Care by default, KLCI for non-healthcare watchlist names.
-const benchOf = s => (s && s.benchmark) || 'MYX:HEALTH';
-const benchName = sym => sym === 'MYX:HEALTH' ? 'Bursa HC' : ((S.cfg.indices.find(i => i.symbol === sym) || {}).short || sym);
+// Each stock is compared with its own benchmark: the site's sector index by default, or the stock's "benchmark".
+const SITE = () => S.cfg.site;
+const benchOf = s => (s && s.benchmark) || SITE().sector_index;
+const benchName = sym => sym === SITE().sector_index ? SITE().sector_index_short : ((S.cfg.indices.find(i => i.symbol === sym) || {}).short || sym);
 function stockRows(){
   return S.cfg.stocks.map(s => {
     const q = S.quotes[s.symbol] || {}, b = (S.quotes[benchOf(s)] || {}).ytd;
@@ -652,7 +651,7 @@ function renderPerf(){
     if (x == null) return 1; if (y == null) return -1;
     return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir;
   });
-  const ix = S.quotes['MYX:HEALTH'] || {};
+  const ix = S.quotes[SITE().sector_index] || {};
   const head = '<thead><tr>' + COLS.map(c => `<th data-k="${c.k}" class="${c.nosort?'nosort':''} ${S.sort.key===c.k?'sorted':''}">${c.l}${S.sort.key===c.k ? (S.sort.dir>0?' ↑':' ↓') : ''}</th>`).join('') + '</tr></thead>';
   const rng = q => {
     if (q.hi52 == null || q.lo52 == null || q.close == null || q.hi52 === q.lo52) return '–';
@@ -663,7 +662,7 @@ function renderPerf(){
       <td><div class="co"><b>${esc(r.name)}</b><span>${esc(r.short)} · ${esc(r.segment)}</span></div></td>
       <td class="num">${fmtPx(r.close)}</td>
       ${PERIODS.map(([k]) => `<td class="num">${retCell(r[k], PERIOD_SCALE[k])}</td>`).join('')}
-      <td class="num ${cls(r.alpha)}" title="YTD vs ${esc(benchName(benchOf(r)))}">${r.alpha == null ? '–' : (r.alpha>0?'+':r.alpha<0?'−':'') + Math.abs(r.alpha).toFixed(1) + ' pts'}${benchOf(r) !== 'MYX:HEALTH' ? `<div style="font-size:10.5px;color:var(--muted)">vs ${esc(benchName(benchOf(r)))}</div>` : ''}</td>
+      <td class="num ${cls(r.alpha)}" title="YTD vs ${esc(benchName(benchOf(r)))}">${r.alpha == null ? '–' : (r.alpha>0?'+':r.alpha<0?'−':'') + Math.abs(r.alpha).toFixed(1) + ' pts'}${benchOf(r) !== SITE().sector_index ? `<div style="font-size:10.5px;color:var(--muted)">vs ${esc(benchName(benchOf(r)))}</div>` : ''}</td>
       <td>${rng(r)}</td>
       <td class="num">${fmtCap(r.mcap)}</td>
       <td class="num">${r.pe == null ? '–' : r.pe.toFixed(1) + '×'}</td>
@@ -671,7 +670,7 @@ function renderPerf(){
       <td class="num">${r.rvol == null ? '–' : r.rvol.toFixed(1) + '×'}</td>
       <td class="num">${r.next_earnings ? new Date(r.next_earnings*1000).toLocaleDateString('en-MY',{day:'numeric',month:'short'}) : '–'}</td>
     </tr>`).join('');
-  const refRow = `<tr class="ref"><td><div class="co"><b>Bursa Health Care index</b><span>Benchmark</span></div></td><td class="num">${fmtPx(ix.close)}</td>
+  const refRow = `<tr class="ref"><td><div class="co"><b>${esc(SITE().sector_index_name)}</b><span>Benchmark</span></div></td><td class="num">${fmtPx(ix.close)}</td>
       ${PERIODS.map(([k]) => `<td class="num">${retCell(ix[k], PERIOD_SCALE[k])}</td>`).join('')}<td></td><td>${rng(ix)}</td><td colspan="5"></td></tr>`;
   $('#perf').innerHTML = head + '<tbody>' + body + refRow + '</tbody>';
 }
@@ -708,7 +707,7 @@ function periodReturn(bars, from, to){
   return {v: (end.c / bars[i].c - 1) * 100, d0: days[i], d1: days[j]};
 }
 async function customRows(){
-  const syms = [...new Set(S.cfg.stocks.map(s => s.symbol).concat('MYX:HEALTH', ...S.cfg.stocks.map(benchOf)))];
+  const syms = [...new Set(S.cfg.stocks.map(s => s.symbol).concat(SITE().sector_index, ...S.cfg.stocks.map(benchOf)))];
   const hist = await Promise.all(syms.map(getHist));
   const res = Object.fromEntries(syms.map((s, i) => [s, periodReturn(hist[i], S.cr.from, S.cr.to)]));
   const earliest = Math.min(...hist.map(h => h[0].t));
@@ -724,7 +723,7 @@ async function renderRetChart(){
     let cr;
     try { cr = await customRows(); } catch(e){ el.innerHTML = `<div class="empty">History unavailable: ${esc(e.message)}</div>`; return; }
     if (tok !== el._tok) return;
-    const r0 = cr.res['MYX:HEALTH'];
+    const r0 = cr.res[SITE().sector_index];
     label = `${fmtD(S.cr.from)} → ${fmtD(S.cr.to)}`;
     const skipped = S.cfg.stocks.filter(s => cr.res[s.symbol].v == null).map(s => s.short);
     const listed = S.cfg.stocks.filter(s => cr.res[s.symbol].since).map(s => `${s.short} since listing ${fmtD(cr.res[s.symbol].since)}`);
@@ -739,7 +738,7 @@ async function renderRetChart(){
   } else {
     label = PERIODS.find(p => p[0]===k)[1];
     rows = stockRows().filter(r => r[k] != null).sort((a,b) => b[k]-a[k]);
-    ref = (S.quotes['MYX:HEALTH'] || {})[k];
+    ref = (S.quotes[SITE().sector_index] || {})[k];
     bval = r => (S.quotes[benchOf(r)] || {})[k];
   }
   if (!rows.length){ el.innerHTML = '<div class="empty">No data for this range</div>'; return; }
@@ -764,7 +763,7 @@ async function renderRetChart(){
       <text x="${v>=0 ? x1+6 : x1-6}" y="${y+h/2+4}" text-anchor="${v>=0?'start':'end'}" class="num val">${fmtPct(v)}</text></g>`;
   });
   $('#ref-val').innerHTML = ref == null ? '' : `<span class="${cls(ref)}">${fmtPct(ref)}</span>`;
-  if (ref != null) svg += `<g class="hit" data-tip="Bursa Health Care index|${label}: ${fmtPct(ref)}"><rect x="${x(ref)-6}" y="0" width="12" height="${H-20}" fill="transparent"/></g>`;
+  if (ref != null) svg += `<g class="hit" data-tip="${esc(SITE().sector_index_name)}|${label}: ${fmtPct(ref)}"><rect x="${x(ref)-6}" y="0" width="12" height="${H-20}" fill="transparent"/></g>`;
   el.innerHTML = svg + '</svg>';
 }
 function niceTicks(lo, hi, n){
@@ -847,7 +846,7 @@ function renderNewsAll(){
   $('#api-news').innerHTML = api.length ? api.map(n => newsItem(n)).join('') : '<li class="empty">Loading…</li>';
 }
 
-const SRC = [['all','All'],['wire','Filings / wires'],['press','Company press'],['sector','Sector & policy'],['api','API supply chain']];
+const SRC = [['all','All'],['wire','Filings / wires'],['press','Company press'],['sector','Sector & policy'],['api', '__SUPPLY__']];
 function renderNewsFilters(){
   const tags = [...new Set(S.news.flatMap(n => n.tags))].sort();
   const btn = (grp, v, l) => `<button class="fbtn ${S.nf[grp]===v?'on':''}" data-grp="${grp}" data-v="${esc(v)}">${esc(l)}</button>`;
@@ -922,7 +921,7 @@ function showCompany(sym){
 
 // ---------- commodities
 function renderCommodities(){
-  const groups = ['FX','Agri','Energy','Metals'];
+  const groups = SITE().commodity_groups;
   const head = '<thead><tr>' + ['Proxy','Last','1D','1W','1M','YTD','1Y','Exposed','What it drives'].map((h,i) => `<th class="nosort" ${i>=7?'style="text-align:left"':''}>${h}</th>`).join('') + '</tr></thead>';
   const exposed = sym => S.cfg.stocks.filter(st => (st.fx || []).includes(sym)).map(st => `<span class="chip sym">${esc(st.short)}</span>`).join(' ');
   const body = groups.map(g => S.cfg.commodities.filter(c => c.group === g).map(c => {
@@ -937,7 +936,7 @@ function renderCommodities(){
 let cmdCardsBuilt = false;
 function buildCmdCards(){
   if (cmdCardsBuilt) return; cmdCardsBuilt = true;
-  const groups = ['FX','Agri','Energy','Metals'];
+  const groups = SITE().commodity_groups;
   $('#cmd-cards').innerHTML = groups.map(g => `<div class="gtitle">${g}</div><div class="cgrid">` +
     S.cfg.commodities.filter(c => c.group === g).map(c => `<div class="card ccard" id="cc-${c.symbol.replace(/[^A-Z0-9]/gi,'')}">
       <div class="top"><div><div class="nm">${esc(c.short)}</div><div class="sy">${c.synthetic ? 'calculated: ' + esc(c.synthetic.num.split(':')[1]) + ' ÷ ' + esc(c.synthetic.den.split(':')[1]) : esc(c.symbol)}</div></div><div class="px num" data-px="${c.symbol}"></div></div>
@@ -1024,6 +1023,13 @@ if (STATIC && 'serviceWorker' in navigator) {
 
 (async function init(){
   S.cfg = await (await fetch(API.config())).json();
+  const st = SITE();
+  $('#universe-label').textContent = st.universe_label;
+  $('#ref-name').textContent = st.sector_index_name;
+  $('#reg-title').textContent = st.regional_title;
+  $('#sup-title').textContent = st.supply_feed.title;
+  $('#sup-sub').textContent = st.supply_feed.sub;
+  SRC[SRC.length - 1][1] = st.supply_feed.label;
   await loadQuotes();
   route();
   loadNews();

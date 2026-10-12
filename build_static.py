@@ -31,7 +31,7 @@ def main():
     data = OUT / "data"
     now = time.time()
 
-    write(data / "config.json", {"stocks": STOCKS, "indices": INDICES, "commodities": COMMODITIES})
+    write(data / "config.json", server.api_config())
 
     quotes = server.fetch_quotes()
     if len(quotes) < len(STOCKS):
@@ -72,12 +72,12 @@ def main():
     if len(failed) == len(syms):
         sys.exit("all history requests failed")
 
-    page = (ROOT / "static" / "index.html").read_text()
+    page = server.render_index()
     page = page.replace("<script>\n// Data endpoints", "<script>window.MHM_STATIC = true;</script>\n<script>\n// Data endpoints", 1)
     assert "MHM_STATIC = true" in page, "static flag injection failed"
     (OUT / "index.html").write_text(page)
-    for f in ("manifest.webmanifest", "sw.js"):
-        shutil.copy(ROOT / "static" / f, OUT / f)
+    (OUT / "manifest.webmanifest").write_text(json.dumps(server.manifest(), indent=2))
+    shutil.copy(ROOT / "static" / "sw.js", OUT / "sw.js")
     shutil.copytree(ROOT / "static" / "icons", OUT / "icons")
     (OUT / ".nojekyll").write_text("")
     print("built", OUT)

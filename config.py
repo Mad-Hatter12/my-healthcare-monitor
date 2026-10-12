@@ -1,7 +1,40 @@
-"""Universe definition for the Malaysia healthcare dashboard.
+"""Universe and site settings for the dashboard.
 
 Symbols are TradingView "EXCHANGE:TICKER" ids. Edit this file to add/remove names.
 """
+
+# Site-level settings: everything sector-specific outside the lists below.
+SITE = {
+    "title": "Malaysia Healthcare Monitor",
+    "short_title": "MY Healthcare",
+    "description": "Bursa healthcare stocks, regional indices, FX, commodities and newsflow.",
+    "universe_label": "Bursa-listed hospitals, clinics & pharma",
+    # Default benchmark for every stock (a stock can override with "benchmark").
+    "sector_index": "MYX:HEALTH",
+    "sector_index_name": "Bursa Health Care index",
+    "sector_index_short": "Bursa HC",
+    "market_index": "FTSEMYX:FBMKLCI",
+    "market_index_name": "FBM KLCI (market)",
+    "regional_title": "Regional healthcare indices",
+    "regional": [
+        {"symbol": "MYX:HEALTH", "name": "Bursa Health Care (MY)"},
+        {"symbol": "SET:HELTH", "name": "SET Health Care (TH)"},
+        {"symbol": "IDX:IDXHEALTH", "name": "IDX Healthcare (ID)"},
+    ],
+    "commodity_groups": ["FX", "Agri", "Energy", "Metals"],
+    # Extra words that make a sector headline Malaysia-relevant (on top of Malaysia/Bursa/ringgit/states).
+    "local_keywords": r"MOH|KKM|Dzulkefly",
+    # The global supply-chain news card (fed by API_QUERIES).
+    "supply_feed": {
+        "title": "API & supply-chain news",
+        "sub": "Global headlines on APIs, raw materials and drug shortages",
+        "label": "API supply chain",
+        "tag": "Supply chain / API",
+        # A headline must match this to be kept.
+        "keywords": r"pharma\w*|drugs?|medicines?|ingredients?|heparin|generics?|antibiotics?|paracetamol|"
+                    r"penicillin|vitamin|KSM|raw materials?|shortage|biosimilar|insulin|API makers?|bulk drug",
+    },
+}
 
 STOCKS = [
     # symbol, Bursa stock code, short, name, segment, news aliases (case-insensitive match in headlines)

@@ -1,4 +1,4 @@
-"""Malaysia Healthcare Dashboard - local server.
+"""Market dashboard - local server (sector set by SITE in config.py).
 
 Prices: TradingView scanner (delayed ~15 min for Bursa) + TradingView chart widgets in the browser.
 News:   TradingView per-symbol wire headlines (Reuters / Dow Jones summaries of Bursa filings)
@@ -23,10 +23,10 @@ import feedparser
 import requests
 import uvicorn
 from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from config import API_QUERIES, COMMODITIES, INDICES, SECTOR_QUERIES, STOCKS, TAGS
+from config import API_QUERIES, COMMODITIES, INDICES, SECTOR_QUERIES, SITE, STOCKS, TAGS
 import bursa
 import tvhist
 
@@ -110,14 +110,14 @@ _alias_res = [(s["symbol"], re.compile(r"\b(" + "|".join(re.escape(a) for a in s
               for s in STOCKS]
 
 
-_my_rx = re.compile(r"\b(Malaysia\w*|Bursa|ringgit|RM\d|MOH|KKM|Dzulkefly|Budget 2027|Sabah|Sarawak|Penang|Johor|Selangor|Kuala Lumpur)\b", re.I)
+_my_rx = re.compile(r"\b(Malaysia\w*|Bursa|ringgit|RM\d|Budget 2027|Sabah|Sarawak|Penang|Johor|Selangor|Kuala Lumpur"
+                    + ("|" + SITE["local_keywords"] if SITE.get("local_keywords") else "") + r")\b", re.I)
 _my_sources = re.compile(r"(The Star|NST|New Straits|Bernama|The Edge|Malay Mail|Free Malaysia|CodeBlue|BusinessToday|"
                          r"Sinar|The Sun|Malaysiakini|Malaysian Reserve|Astro Awani|Business Times|theedgemalaysia|"
                          r"Focus Malaysia|Vulcan Post|Daily Express|Borneo Post|The Vibes|Dayak Daily)", re.I)
 
 
-_pharma_rx = re.compile(r"\b(pharma\w*|drugs?|medicines?|ingredients?|heparin|generics?|antibiotics?|paracetamol|"
-                        r"penicillin|vitamin|KSM|raw materials?|shortage|biosimilar|insulin|API makers?|bulk drug)\b", re.I)
+_supply_rx = re.compile(r"\b(" + SITE["supply_feed"]["keywords"] + r")\b", re.I)
 
 
 _noise_rx = re.compile(r"(IndexBox|Samco|siam\.in|AD HOC NEWS|Stocks? To Buy|Market To 20\d\d|Market Outlook)", re.I)
@@ -177,10 +177,10 @@ def google_news(query, forced_symbol=None, kind="press"):
         # sector query: keep Malaysia-relevant stories only
         if kind == "sector" and not (_my_rx.search(title) or _my_sources.search(item["source"])):
             continue
-        if kind == "api" and (not _pharma_rx.search(title) or _noise_rx.search(item["source"] + " " + title)):
+        if kind == "api" and (not _supply_rx.search(title) or _noise_rx.search(item["source"] + " " + title)):
             continue
-        if kind == "api" and "Supply chain / API" not in item["tags"]:
-            item["tags"].append("Supply chain / API")
+        if kind == "api" and SITE["supply_feed"]["tag"] not in item["tags"]:
+            item["tags"].append(SITE["supply_feed"]["tag"])
         out.append(item)
     return out
 
@@ -324,12 +324,12 @@ def get_history(symbol):
 
 
 # ---------------------------------------------------------------- app
-app = FastAPI(title="MY Healthcare Dashboard")
+app = FastAPI(title=SITE["title"])
 
 
 @app.get("/api/config")
 def api_config():
-    return {"stocks": STOCKS, "indices": INDICES, "commodities": COMMODITIES}
+    return {"site": SITE, "stocks": STOCKS, "indices": INDICES, "commodities": COMMODITIES}
 
 
 @app.get("/api/quotes")
@@ -363,9 +363,33 @@ def api_history(symbol: str = Query(...)):
         return JSONResponse({"error": str(e)}, status_code=502)
 
 
+def render_index():
+    """index.html with the site's names filled in (used by the server and the static build)."""
+    page = (ROOT / "static" / "index.html").read_text()
+    return page.replace("__SITE_TITLE__", html.escape(SITE["title"])).replace("__SITE_SHORT__", html.escape(SITE["short_title"]))
+
+
+def manifest():
+    return {
+        "name": SITE["title"], "short_name": SITE["short_title"], "description": SITE["description"],
+        "start_url": "./", "scope": "./", "display": "standalone", "orientation": "any",
+        "background_color": "#111110", "theme_color": "#1a1a19",
+        "icons": [
+            {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
+    }
+
+
 @app.get("/")
 def index():
-    return FileResponse(ROOT / "static" / "index.html")
+    return HTMLResponse(render_index())
+
+
+@app.get("/manifest.webmanifest")
+def api_manifest():
+    return JSONResponse(manifest(), media_type="application/manifest+json")
 
 
 app.mount("/", StaticFiles(directory=ROOT / "static"), name="static")  # manifest, icons, sw.js
