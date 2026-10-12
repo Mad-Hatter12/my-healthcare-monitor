@@ -24,6 +24,7 @@ import requests
 import uvicorn
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from config import API_QUERIES, COMMODITIES, INDICES, SECTOR_QUERIES, STOCKS, TAGS
 import bursa
@@ -365,6 +366,9 @@ def api_history(symbol: str = Query(...)):
 @app.get("/")
 def index():
     return FileResponse(ROOT / "static" / "index.html")
+
+
+app.mount("/", StaticFiles(directory=ROOT / "static"), name="static")  # manifest, icons, sw.js
 
 
 if __name__ == "__main__":

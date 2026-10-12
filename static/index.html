@@ -7,6 +7,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="MY Healthcare">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>MY Healthcare Monitor</title>
 <style>
 :root{
@@ -29,6 +34,8 @@
   }
 }
 *{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+a,button,tr,.copill,.tile,.fbtn{-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
 .num{font-variant-numeric:tabular-nums}
@@ -180,7 +187,9 @@ td.wrap{white-space:normal;text-align:left;min-width:180px}
   .news li{padding:10px 12px}
   .custom-range{padding:10px 12px}
   .flabel{width:100%}
-  input.search{min-width:0;width:100%;margin-left:0!important}
+  input.search{min-width:0;width:100%;margin-left:0!important;font-size:16px}
+  .custom-range input[type=date]{font-size:16px}
+  .seg button,.fbtn,nav a{min-height:36px}
   /* shareholding table becomes one compact card per filing */
   #sh-tbl thead{display:none}
   #sh-tbl tbody tr{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"co filed link" "holder holder holder" "chg shares stake";
@@ -1008,6 +1017,10 @@ document.addEventListener('mousemove', e => {
 addEventListener('hashchange', route);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => location.reload());
 addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(renderRetChart, 150); });
+
+if (STATIC && 'serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW', e)));
+}
 
 (async function init(){
   S.cfg = await (await fetch(API.config())).json();

@@ -76,6 +76,9 @@ def main():
     page = page.replace("<script>\n// Data endpoints", "<script>window.MHM_STATIC = true;</script>\n<script>\n// Data endpoints", 1)
     assert "MHM_STATIC = true" in page, "static flag injection failed"
     (OUT / "index.html").write_text(page)
+    for f in ("manifest.webmanifest", "sw.js"):
+        shutil.copy(ROOT / "static" / f, OUT / f)
+    shutil.copytree(ROOT / "static" / "icons", OUT / "icons")
     (OUT / ".nojekyll").write_text("")
     print("built", OUT)
 
